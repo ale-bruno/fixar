@@ -6,15 +6,44 @@
     <title>Seu Manuel WebAR</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.rawgit.com/jeromeetienne/ar.js/1.7.2/aframe/build/aframe-ar.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
 </head>
 <body style="margin: 0; overflow: hidden;">
     <a-scene embedded arjs>
-        <!-- Câmera AR com detecção de QR Code -->
-        <a-marker type="pattern" url="qr-code.patt">
-            <!-- Modelo 3D para exibição -->
-            <a-entity gltf-model="modelos/aparelho.glb" position="0 0 0" scale="0.5 0.5 0.5"></a-entity>
-        </a-marker>
+        <video id="webcam" autoplay playsinline style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;"></video>
+        <a-text id="info-text" value="Aponte para um objeto" position="0 1 -3" scale="1.5 1.5 1.5" visible="true"></a-text>
         <a-entity camera></a-entity>
     </a-scene>
+
+    <script>
+        async function setupCamera() {
+            const video = document.getElementById('webcam');
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+        }
+
+        async function detectObjects() {
+            const model = await cocoSsd.load();
+            const video = document.getElementById('webcam');
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            document.body.appendChild(canvas);
+
+            setInterval(async () => {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const predictions = await model.detect(canvas);
+                predictions.forEach(prediction => {
+                    if (prediction.class === 'tv' || prediction.class === 'cell phone') {
+                        document.getElementById('info-text').setAttribute('value', 'Objeto detectado: ' + prediction.class);
+                    }
+                });
+            }, 1000);
+        }
+
+        setupCamera().then(detectObjects);
+    </script>
 </body>
 </html>
