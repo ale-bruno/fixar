@@ -20,9 +20,9 @@
         async function setupCamera() {
             const video = document.getElementById('webcam');
             const devices = await navigator.mediaDevices.enumerateDevices();
-            const backCamera = devices.find(device => device.kind === 'videoinput' && device.label.toLowerCase().includes('back'));
+            const backCamera = devices.find(device => device.kind === 'videoinput' && device.label.toLowerCase().includes('wide') || device.label.toLowerCase().includes('back'));
             const constraints = {
-                video: backCamera ? { deviceId: { exact: backCamera.deviceId } } : { facingMode: 'environment' }
+                video: backCamera ? { deviceId: { exact: backCamera.deviceId }, zoom: { ideal: 1.0 } } : { facingMode: 'environment', zoom: { ideal: 1.0 } }
             };
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
