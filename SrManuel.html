@@ -9,7 +9,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        const firebaseConfig = {
+         const firebaseConfig = {
             apiKey: "AIzaSyDvABUDoeTt4LYKg6TO8MixUqqH6UM-kVY",
             authDomain: "srmanuel-c405c.firebaseapp.com",
             databaseURL: "https://srmanuel-c405c-default-rtdb.firebaseio.com",
@@ -24,7 +24,7 @@
         const db = getDatabase(app);
 
         // Função para salvar produto no Firebase
-        function salvarProdutoNoFirebase(codigo, nome, marca, categoria) {
+        window.salvarProdutoNoFirebase = function(codigo, nome, marca, categoria) {
             console.log("Salvando produto no Firebase...");
             let produto = { codigo, nome, marca, categoria };
             set(ref(db, 'produtos/' + codigo), produto)
@@ -192,3 +192,4 @@
 
 </body>
 </html>
+
