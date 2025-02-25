@@ -48,8 +48,8 @@
             }
         }
 
-        let scanner;
         let qrCodeScanner;
+        let cameraStream;
 
         function iniciarScanner() {
             // Iniciar QuaggaJS para ler código de barras
@@ -89,15 +89,11 @@
         }
 
         function pararScanner() {
-            if (scanner) {
-                scanner.stop();
-            }
             if (qrCodeScanner) {
                 qrCodeScanner.reset();
             }
+            Quagga.stop();
         }
-
-        let cameraStream;
 
         function iniciarCamera() {
             document.getElementById("camera-container").style.display = "block";
@@ -135,8 +131,7 @@
             window.imagemProduto = imagemBase64;
         }
 
-        async function buscarProduto() {
-            let codigo = document.getElementById("codigoBarras").value;
+        async function buscarProduto(codigo) {
             let resultadoDiv = document.getElementById("resultado");
 
             if (codigo === "") {
@@ -191,10 +186,8 @@
             }
         }
     </script>
-
 </head>
 <body>
-
     <h1>Leitor de Código de Barras e QR Code</h1>
 
     <button onclick="iniciarScanner()">📷 Escanear Código de Barras</button>
@@ -202,21 +195,21 @@
 
     <h2>Ou escanear QR Code</h2>
     <button onclick="iniciarQrScanner()">📷 Iniciar QR Code</button>
-    <div id="qr-reader" style="display: none;"></div>
+    <div id="qr-reader"></div>
 
     <h2>Ou digite manualmente</h2>
     <input type="text" id="codigoBarras" placeholder="Digite o código">
-    <button onclick="buscarProduto()">Buscar</button>
+    <button onclick="buscarProduto(document.getElementById('codigoBarras').value)">Buscar</button>
 
     <div id="resultado"></div>
 
     <h2>Captura de Imagem do Produto</h2>
     <button onclick="iniciarCamera()">📸 Tirar Foto do Produto</button>
 
-    <div id="camera-container">
+    <div id="camera-container" style="display: none;">
         <video id="videoElement" autoplay></video>
         <button onclick="tirarFoto()">Tirar Foto</button>
-        <canvas id="photoCanvas"></canvas>
+        <canvas id="photoCanvas" style="display: none;"></canvas>
     </div>
 
 </body>
