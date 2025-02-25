@@ -7,9 +7,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-         const firebaseConfig = {
+        const firebaseConfig = {
             apiKey: "AIzaSyDvABUDoeTt4LYKg6TO8MixUqqH6UM-kVY",
             authDomain: "srmanuel-c405c.firebaseapp.com",
             databaseURL: "https://srmanuel-c405c-default-rtdb.firebaseio.com",
@@ -24,9 +24,9 @@
         const db = getDatabase(app);
 
         // Função para salvar produto no Firebase
-        window.salvarProdutoNoFirebase = function(codigo, nome, marca, categoria) {
+        window.salvarProdutoNoFirebase = function(codigo, nome, marca, categoria, imagem) {
             console.log("Salvando produto no Firebase...");
-            let produto = { codigo, nome, marca, categoria };
+            let produto = { codigo, nome, marca, categoria, imagem };
             set(ref(db, 'produtos/' + codigo), produto)
                 .then(() => {
                     console.log("Produto salvo com sucesso no Firebase!");
@@ -36,6 +36,17 @@
                     console.error("Erro ao salvar produto no Firebase: ", error);
                     alert("Erro ao salvar produto no Firebase: " + error.message);
                 });
+        }
+
+        // Função para buscar produto no Firebase
+        async function buscarProdutoNoFirebase(codigo) {
+            const produtoRef = ref(db, 'produtos/' + codigo);
+            const snapshot = await get(produtoRef);
+            if (snapshot.exists()) {
+                return snapshot.val();
+            } else {
+                return null;
+            }
         }
     </script>
     <style>
@@ -66,6 +77,19 @@
             max-width: 200px;
             margin-top: 10px;
         }
+        #camera-container {
+            display: none;
+            position: relative;
+            margin-top: 20px;
+        }
+        #videoElement {
+            width: 100%;
+        }
+        #photoCanvas {
+            display: none;
+            width: 100%;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -85,64 +109,60 @@
 
     <div id="resultado"></div>
 
-    <script>
-        function iniciarScanner() {
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.querySelector("#scanner-container"),
-                    constraints: {
-                        facingMode: "environment"
-                    }
-                },
-                decoder: {
-                    readers: ["ean_reader", "upc_reader", "code_128_reader"]
-                }
-            }, function (err) {
-                if (!err) {
-                    Quagga.start();
-                    console.log("Scanner iniciado!");
-                } else {
-                    console.error("Erro ao iniciar scanner:", err);
-                }
-            });
+    <h2>Captura de Imagem do Produto</h2>
+    <button onclick="iniciarCamera()">📸 Tirar Foto do Produto</button>
 
-            Quagga.onDetected(function (data) {
-                Quagga.stop();
-                let codigo = data.codeResult.code;
-                console.log("Código de barras detectado: ", codigo);
-                document.getElementById("codigoBarras").value = codigo;
-                buscarProduto();
-            });
+    <div id="camera-container">
+        <video id="videoElement" autoplay></video>
+        <button onclick="tirarFoto()">Tirar Foto</button>
+        <canvas id="photoCanvas"></canvas>
+    </div>
+
+    <script>
+        let cameraStream;
+
+        function iniciarCamera() {
+            // Exibir o vídeo da câmera
+            document.getElementById("camera-container").style.display = "block";
+
+            // Acessar a câmera
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    cameraStream = stream;
+                    document.getElementById("videoElement").srcObject = stream;
+                })
+                .catch(function(error) {
+                    alert("Erro ao acessar a câmera: " + error.message);
+                });
         }
 
-        let qrScanner;
+        function tirarFoto() {
+            // Obter o canvas para capturar a imagem
+            const video = document.getElementById("videoElement");
+            const canvas = document.getElementById("photoCanvas");
+            const context = canvas.getContext("2d");
 
-        function iniciarQrScanner() {
-            document.getElementById("qr-reader").style.display = "block";
-            console.log("Iniciando scanner QR...");
+            // Definir tamanho do canvas para o tamanho do vídeo
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
 
-            if (!qrScanner) {
-                qrScanner = new Html5Qrcode("qr-reader");
-                qrScanner.start(
-                    { facingMode: "environment" },
-                    {
-                        fps: 10,
-                        qrbox: { width: 250, height: 250 }
-                    },
-                    (decodedText) => {
-                        console.log("QR Code detectado:", decodedText);
-                        document.getElementById("codigoBarras").value = decodedText;
-                        buscarProduto();
-                    },
-                    (errorMessage) => {
-                        console.log("Erro no QR Code: ", errorMessage);
-                    }
-                ).catch(err => {
-                    console.error("Erro ao iniciar scanner de QR Code:", err);
-                });
-            }
+            // Desenhar a imagem do vídeo no canvas
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Obter a imagem como base64
+            const imagemBase64 = canvas.toDataURL("image/png");
+
+            // Exibir a imagem capturada
+            const imagemElement = document.createElement("img");
+            imagemElement.src = imagemBase64;
+            document.getElementById("resultado").innerHTML = "";
+            document.getElementById("resultado").appendChild(imagemElement);
+
+            // Parar o stream de vídeo
+            cameraStream.getTracks().forEach(track => track.stop());
+
+            // Armazenar a imagem base64 para o cadastro
+            window.imagemProduto = imagemBase64;
         }
 
         async function buscarProduto() {
@@ -170,18 +190,31 @@
                         <img src="${produto.image_url || ''}" alt="Imagem do produto">
                     `;
                 } else {
-                    if (confirm("Produto não encontrado! Deseja cadastrá-lo?")) {
-                        let nome = prompt("Nome do produto:");
-                        let marca = prompt("Marca do produto:");
-                        let categoria = prompt("Categoria do produto:");
+                    // Produto não encontrado na API, buscar no Firebase
+                    let produtoFirebase = await buscarProdutoNoFirebase(codigo);
+                    if (produtoFirebase) {
+                        resultadoDiv.innerHTML = `
+                            <h2>${produtoFirebase.nome || "Nome não disponível"}</h2>
+                            <p><strong>Marca:</strong> ${produtoFirebase.marca || "Não informado"}</p>
+                            <p><strong>Categoria:</strong> ${produtoFirebase.categoria || "Não disponível"}</p>
+                            <p><strong>Código:</strong> ${produtoFirebase.codigo}</p>
+                            <img src="${produtoFirebase.imagem || ''}" alt="Imagem do produto" style="max-width: 200px;">
+                        `;
+                    } else {
+                        if (confirm("Produto não encontrado! Deseja cadastrá-lo?")) {
+                            let nome = prompt("Nome do produto:");
+                            let marca = prompt("Marca do produto:");
+                            let categoria = prompt("Categoria do produto:");
+                            let imagem = window.imagemProduto || prompt("URL da imagem do produto:");
 
-                        if (nome && marca && categoria) {
-                            salvarProdutoNoFirebase(codigo, nome, marca, categoria);
-                        } else {
-                            alert("Dados incompletos. Produto não cadastrado.");
+                            if (nome && marca && categoria && imagem) {
+                                salvarProdutoNoFirebase(codigo, nome, marca, categoria, imagem);
+                            } else {
+                                alert("Dados incompletos. Produto não cadastrado.");
+                            }
                         }
+                        resultadoDiv.innerHTML = "<p>Produto não encontrado.</p>";
                     }
-                    resultadoDiv.innerHTML = "<p>Produto não encontrado.</p>";
                 }
             } catch (error) {
                 resultadoDiv.innerHTML = "<p>Erro ao buscar produto.</p>";
@@ -192,4 +225,3 @@
 
 </body>
 </html>
-
