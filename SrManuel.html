@@ -81,13 +81,24 @@
         }
 
         function iniciarQrScanner() {
-            const qrReader = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: 250 });
-            qrReader.render(qrCodeSuccess);
-        }
+            const qrScanner = new Html5Qrcode("qr-reader");
 
-        function qrCodeSuccess(decodedText) {
-            document.getElementById("codigoBarras").value = decodedText;
-            buscarProduto();
+            qrScanner.start(
+                { facingMode: "environment" },
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 }
+                },
+                (decodedText) => {
+                    document.getElementById("codigoBarras").value = decodedText;
+                    buscarProduto();
+                },
+                (errorMessage) => {
+                    console.log("QR Code não detectado ainda...");
+                }
+            ).catch(err => {
+                console.error("Erro ao iniciar scanner de QR Code:", err);
+            });
         }
 
         async function buscarProduto() {
@@ -121,6 +132,7 @@
             }
         }
 
+        // Iniciar o scanner de QR Code automaticamente
         iniciarQrScanner();
     </script>
 
