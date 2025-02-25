@@ -142,10 +142,12 @@
         return;
     }
 
-    console.log("Buscando produto com código:", codigo);
+    console.log("Código pesquisado:", codigo);
 
     // Buscar no Firebase primeiro
     let produtoFirebase = await buscarProdutoNoFirebase(codigo);
+    console.log("Resultado do Firebase:", produtoFirebase);
+
     if (produtoFirebase) {
         resultadoDiv.innerHTML = `
             <h2>${produtoFirebase.nome || "Nome não disponível"}</h2>
@@ -157,12 +159,16 @@
         return;
     }
 
-    // Se não encontrou no Firebase, buscar na API OpenFoodFacts
+    console.log("Produto não encontrado no Firebase, buscando na API OpenFoodFacts...");
+
+    // Buscar na API OpenFoodFacts
     let url = `https://world.openfoodfacts.org/api/v0/product/${codigo}.json`;
 
     try {
         let response = await fetch(url);
         let data = await response.json();
+
+        console.log("Resposta da API:", data);
 
         if (data.status === 1 && data.product) {
             let produto = data.product;
@@ -173,7 +179,8 @@
                 <img src="${produto.image_url || ''}" alt="Imagem do produto">
             `;
         } else {
-            // Se o produto não for encontrado
+            console.log("Produto realmente não encontrado.");
+
             if (confirm("Produto não encontrado! Deseja cadastrá-lo?")) {
                 let nome = prompt("Nome do produto:");
                 let marca = prompt("Marca do produto:");
