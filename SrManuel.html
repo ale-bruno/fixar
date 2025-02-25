@@ -6,7 +6,7 @@
     <title>Leitor de Código de Barras e QR Code</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <script type="module">
-         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
         const firebaseConfig = {
@@ -20,7 +20,6 @@
             measurementId: "G-KSJYNXDCQ9"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
@@ -28,8 +27,12 @@
         function salvarProdutoNoFirebase(codigo, nome, marca, categoria) {
             let produto = { codigo, nome, marca, categoria };
             set(ref(db, 'produtos/' + codigo), produto)
-                .then(() => alert("Produto salvo com sucesso!"))
-                .catch(error => alert("Erro ao salvar: " + error));
+                .then(() => {
+                    alert("Produto salvo com sucesso!");
+                })
+                .catch((error) => {
+                    alert("Erro ao salvar produto no Firebase: " + error.message);
+                });
         }
     </script>
     <style>
