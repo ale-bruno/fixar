@@ -3,15 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leitor de Código de Barras</title>
+    <title>Leitor de Código de Barras e QR Code</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             text-align: center;
             padding: 20px;
         }
-        #scanner-container {
+        #scanner-container, #qr-reader {
             width: 100%;
             max-width: 400px;
             margin: auto;
@@ -37,10 +38,13 @@
 </head>
 <body>
 
-    <h1>Leitor de Código de Barras</h1>
+    <h1>Leitor de Código de Barras e QR Code</h1>
 
-    <button onclick="iniciarScanner()">📷 Iniciar Leitor</button>
+    <button onclick="iniciarScanner()">📷 Escanear Código de Barras</button>
     <div id="scanner-container"></div>
+
+    <h2>Ou escanear QR Code</h2>
+    <div id="qr-reader"></div>
 
     <h2>Ou digite manualmente</h2>
     <input type="text" id="codigoBarras" placeholder="Digite o código">
@@ -60,7 +64,7 @@
                     }
                 },
                 decoder: {
-                    readers: ["ean_reader"]
+                    readers: ["ean_reader", "code_128_reader", "upc_reader"]
                 }
             }, function (err) {
                 if (!err) {
@@ -76,12 +80,22 @@
             });
         }
 
+        function iniciarQrScanner() {
+            const qrReader = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: 250 });
+            qrReader.render(qrCodeSuccess);
+        }
+
+        function qrCodeSuccess(decodedText) {
+            document.getElementById("codigoBarras").value = decodedText;
+            buscarProduto();
+        }
+
         async function buscarProduto() {
             let codigo = document.getElementById("codigoBarras").value;
             let resultadoDiv = document.getElementById("resultado");
 
             if (codigo === "") {
-                resultadoDiv.innerHTML = "<p>Por favor, insira ou escaneie um código de barras.</p>";
+                resultadoDiv.innerHTML = "<p>Por favor, insira ou escaneie um código.</p>";
                 return;
             }
 
@@ -106,6 +120,9 @@
                 resultadoDiv.innerHTML = "<p>Erro ao buscar produto.</p>";
             }
         }
+
+        // Iniciar o scanner de QR Code automaticamente
+        iniciarQrScanner();
     </script>
 
 </body>
