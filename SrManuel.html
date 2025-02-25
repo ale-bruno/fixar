@@ -44,7 +44,8 @@
     <div id="scanner-container"></div>
 
     <h2>Ou escanear QR Code</h2>
-    <div id="qr-reader"></div>
+    <button onclick="iniciarQrScanner()">📷 Iniciar QR Code</button>
+    <div id="qr-reader" style="display: none;"></div>
 
     <h2>Ou digite manualmente</h2>
     <input type="text" id="codigoBarras" placeholder="Digite o código">
@@ -80,25 +81,30 @@
             });
         }
 
-        function iniciarQrScanner() {
-            const qrScanner = new Html5Qrcode("qr-reader");
+        let qrScanner;
 
-            qrScanner.start(
-                { facingMode: "environment" },
-                {
-                    fps: 10,
-                    qrbox: { width: 250, height: 250 }
-                },
-                (decodedText) => {
-                    document.getElementById("codigoBarras").value = decodedText;
-                    buscarProduto();
-                },
-                (errorMessage) => {
-                    console.log("QR Code não detectado ainda...");
-                }
-            ).catch(err => {
-                console.error("Erro ao iniciar scanner de QR Code:", err);
-            });
+        function iniciarQrScanner() {
+            document.getElementById("qr-reader").style.display = "block";
+
+            if (!qrScanner) {
+                qrScanner = new Html5Qrcode("qr-reader");
+                qrScanner.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 }
+                    },
+                    (decodedText) => {
+                        document.getElementById("codigoBarras").value = decodedText;
+                        buscarProduto();
+                    },
+                    (errorMessage) => {
+                        console.log("QR Code não detectado ainda...");
+                    }
+                ).catch(err => {
+                    console.error("Erro ao iniciar scanner de QR Code:", err);
+                });
+            }
         }
 
         async function buscarProduto() {
@@ -131,9 +137,6 @@
                 resultadoDiv.innerHTML = "<p>Erro ao buscar produto.</p>";
             }
         }
-
-        // Iniciar o scanner de QR Code automaticamente
-        iniciarQrScanner();
     </script>
 
 </body>
