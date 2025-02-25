@@ -134,86 +134,93 @@
             window.imagemProduto = imagemBase64;
         }
 
-        async function buscarProduto(codigo) {
-            let resultadoDiv = document.getElementById("resultado");
+    async function buscarProduto(codigo) {
+    let resultadoDiv = document.getElementById("resultado");
 
-            if (codigo === "") {
-                resultadoDiv.innerHTML = "<p>Por favor, insira ou escaneie um código.</p>";
-                return;
-            }
+    if (!codigo || codigo.trim() === "") {
+        resultadoDiv.innerHTML = "<p>Por favor, insira ou escaneie um código.</p>";
+        return;
+    }
 
-            console.log("Buscando produto com código:", codigo);
-            let url = `https://world.openfoodfacts.org/api/v0/product/${codigo}.json`;
+    console.log("Buscando produto com código:", codigo);
 
-            try {
-                let response = await fetch(url);
-                let data = await response.json();
+    // Buscar no Firebase primeiro
+    let produtoFirebase = await buscarProdutoNoFirebase(codigo);
+    if (produtoFirebase) {
+        resultadoDiv.innerHTML = `
+            <h2>${produtoFirebase.nome || "Nome não disponível"}</h2>
+            <p><strong>Marca:</strong> ${produtoFirebase.marca || "Não informado"}</p>
+            <p><strong>Categoria:</strong> ${produtoFirebase.categoria || "Não disponível"}</p>
+            <p><strong>Código:</strong> ${produtoFirebase.codigo}</p>
+            <img src="${produtoFirebase.imagem || ''}" alt="Imagem do produto" style="max-width: 200px;">
+        `;
+        return;
+    }
 
-                if (data.status === 1) {
-                    let produto = data.product;
-                    resultadoDiv.innerHTML = `
-                        <h2>${produto.product_name || "Nome não disponível"}</h2>
-                        <p><strong>Marca:</strong> ${produto.brands || "Não informado"}</p>
-                        <p><strong>Categoria:</strong> ${produto.categories || "Não disponível"}</p>
-                        <img src="${produto.image_url || ''}" alt="Imagem do produto">
-                    `;
+    // Se não encontrou no Firebase, buscar na API OpenFoodFacts
+    let url = `https://world.openfoodfacts.org/api/v0/product/${codigo}.json`;
+
+    try {
+        let response = await fetch(url);
+        let data = await response.json();
+
+        if (data.status === 1 && data.product) {
+            let produto = data.product;
+            resultadoDiv.innerHTML = `
+                <h2>${produto.product_name || "Nome não disponível"}</h2>
+                <p><strong>Marca:</strong> ${produto.brands || "Não informado"}</p>
+                <p><strong>Categoria:</strong> ${produto.categories || "Não disponível"}</p>
+                <img src="${produto.image_url || ''}" alt="Imagem do produto">
+            `;
+        } else {
+            // Se o produto não for encontrado
+            if (confirm("Produto não encontrado! Deseja cadastrá-lo?")) {
+                let nome = prompt("Nome do produto:");
+                let marca = prompt("Marca do produto:");
+                let categoria = prompt("Categoria do produto:");
+                let imagem = window.imagemProduto || prompt("URL da imagem do produto:");
+
+                if (nome && marca && categoria && imagem) {
+                    salvarProdutoNoFirebase(codigo, nome, marca, categoria, imagem);
                 } else {
-                    let produtoFirebase = await buscarProdutoNoFirebase(codigo);
-                    if (produtoFirebase) {
-                        resultadoDiv.innerHTML = `
-                            <h2>${produtoFirebase.nome || "Nome não disponível"}</h2>
-                            <p><strong>Marca:</strong> ${produtoFirebase.marca || "Não informado"}</p>
-                            <p><strong>Categoria:</strong> ${produtoFirebase.categoria || "Não disponível"}</p>
-                            <p><strong>Código:</strong> ${produtoFirebase.codigo}</p>
-                            <img src="${produtoFirebase.imagem || ''}" alt="Imagem do produto" style="max-width: 200px;">
-                        `;
-                    } else {
-                        if (confirm("Produto não encontrado! Deseja cadastrá-lo?")) {
-                            let nome = prompt("Nome do produto:");
-                            let marca = prompt("Marca do produto:");
-                            let categoria = prompt("Categoria do produto:");
-                            let imagem = window.imagemProduto || prompt("URL da imagem do produto:");
-
-                            if (nome && marca && categoria && imagem) {
-                                salvarProdutoNoFirebase(codigo, nome, marca, categoria, imagem);
-                            } else {
-                                alert("Dados incompletos. Produto não cadastrado.");
-                            }
-                        }
-                        resultadoDiv.innerHTML = "<p>Produto não encontrado.</p>";
-                    }
+                    alert("Dados incompletos. Produto não cadastrado.");
                 }
-            } catch (error) {
-                resultadoDiv.innerHTML = "<p>Erro ao buscar produto.</p>";
-                console.error("Erro na requisição de produto:", error);
             }
+            resultadoDiv.innerHTML = "<p>Produto não encontrado.</p>";
         }
+    } catch (error) {
+        resultadoDiv.innerHTML = "<p>Erro ao buscar produto.</p>";
+        console.error("Erro na requisição de produto:", error);
+    }
+}
+
+
     </script>
 </head>
 <body>
-    <h1>Leitor de Código de Barras e QR Code</h1>
+<h1>Leitor de Código de Barras e QR Code</h1>
 
-    <button onclick="iniciarScanner()">📷 Escanear Código de Barras</button>
-    <div id="scanner-container"></div>
+<button onclick="iniciarScanner()">📷 Escanear Código de Barras</button>
+<div id="scanner-container"></div>
 
-    <h2>Ou escanear QR Code</h2>
-    <button onclick="iniciarQrScanner()">📷 Iniciar QR Code</button>
-    <div id="qr-reader"></div>
+<h2>Ou escanear QR Code</h2>
+<button onclick="iniciarQrScanner()">📷 Iniciar QR Code</button>
+<div id="qr-reader"></div>
 
-    <h2>Ou digite manualmente</h2>
-    <input type="text" id="codigoBarras" placeholder="Digite o código">
-    <button onclick="buscarProduto(document.getElementById('codigoBarras').value)">Buscar</button>
+<h2>Ou digite manualmente</h2>
+<input type="text" id="codigoBarras" placeholder="Digite o código">
+<button onclick="buscarProduto(document.getElementById('codigoBarras').value)">Buscar</button>
 
-    <div id="resultado"></div>
+<div id="resultado"></div>
 
-    <h2>Captura de Imagem do Produto</h2>
-    <button onclick="iniciarCamera()">📸 Tirar Foto do Produto</button>
+<h2>Captura de Imagem do Produto</h2>
+<button onclick="iniciarCamera()">📸 Tirar Foto do Produto</button>
 
-    <div id="camera-container" style="display: none;">
-        <video id="videoElement" autoplay></video>
-        <button onclick="tirarFoto()">Tirar Foto</button>
-        <canvas id="photoCanvas" style="display: none;"></canvas>
-    </div>
+<div id="camera-container" style="display: none;">
+    <video id="videoElement" autoplay></video>
+    <button onclick="tirarFoto()">Tirar Foto</button>
+    <canvas id="photoCanvas" style="display: none;"></canvas>
+</div>
 
 </body>
 </html>
