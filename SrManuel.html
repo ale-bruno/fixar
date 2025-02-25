@@ -3,70 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seu Manuel WebAR</title>
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://cdn.rawgit.com/jeromeetienne/ar.js/1.7.2/aframe/build/aframe-ar.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <title>Busca de Produto por Código de Barras</title>
     <style>
-        #info-text {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 10px 20px;
-            font-size: 18px;
-            border-radius: 5px;
-            z-index: 1000;
-            display: none;
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        input {
+            padding: 10px;
+            width: 250px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #resultado {
+            margin-top: 20px;
+        }
+        img {
+            max-width: 200px;
+            margin-top: 10px;
         }
     </style>
 </head>
-<body style="margin: 0; overflow: hidden;">
-    <video id="webcam" autoplay playsinline style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;"></video>
-    <div id="info-text">Aponte para um objeto</div>
+<body>
+
+    <h1>Buscar Produto pelo Código de Barras</h1>
+
+    <input type="text" id="codigoBarras" placeholder="Digite o código de barras">
+    <button onclick="buscarProduto()">Buscar</button>
+
+    <div id="resultado"></div>
 
     <script>
-        async function setupCamera() {
-            const video = document.getElementById('webcam');
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const backCamera = devices.find(device => device.kind === 'videoinput' && device.label.toLowerCase().includes('wide') || device.label.toLowerCase().includes('back'));
-            const constraints = {
-                video: backCamera ? { deviceId: { exact: backCamera.deviceId } } : { facingMode: 'environment' }
-            };
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            video.srcObject = stream;
-        }
+        async function buscarProduto() {
+            let codigo = document.getElementById("codigoBarras").value;
+            let resultadoDiv = document.getElementById("resultado");
 
-        async function detectObjects() {
-            const model = await cocoSsd.load();
-            const video = document.getElementById('webcam');
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            document.body.appendChild(canvas);
-            const infoText = document.getElementById('info-text');
-            infoText.style.display = 'block';
+            if (codigo === "") {
+                resultadoDiv.innerHTML = "<p>Por favor, insira um código de barras.</p>";
+                return;
+            }
 
-            setInterval(async () => {
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const predictions = await model.detect(canvas);
-                if (predictions.length > 0) {
-                    predictions.forEach(prediction => {
-                        if (prediction.class === 'tv' || prediction.class === 'cell phone') {
-                            infoText.innerText = 'Objeto detectado: ' + prediction.class;
-                        }
-                    });
+            let url = `https://world.openfoodfacts.org/api/v0/product/${codigo}.json`;
+
+            try {
+                let response = await fetch(url);
+                let data = await response.json();
+
+                if (data.status === 1) {
+                    let produto = data.product;
+                    resultadoDiv.innerHTML = `
+                        <h2>${produto.product_name || "Nome não disponível"}</h2>
+                        <p><strong>Marca:</strong> ${produto.brands || "Não informado"}</p>
+                        <p><strong>Categoria:</strong> ${produto.categories || "Não disponível"}</p>
+                        <img src="${produto.image_url || ''}" alt="Imagem do produto">
+                    `;
                 } else {
-                    infoText.innerText = 'Aponte para um objeto';
+                    resultadoDiv.innerHTML = "<p>Produto não encontrado.</p>";
                 }
-            }, 1000);
+            } catch (error) {
+                resultadoDiv.innerHTML = "<p>Erro ao buscar produto.</p>";
+            }
         }
-
-        setupCamera().then(detectObjects);
     </script>
+
 </body>
 </html>
