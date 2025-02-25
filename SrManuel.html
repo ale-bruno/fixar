@@ -5,7 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leitor de Código de Barras e QR Code</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "SUA_API_KEY",
+            authDomain: "SEU_AUTH_DOMAIN",
+            databaseURL: "SUA_DATABASE_URL",
+            projectId: "SEU_PROJECT_ID",
+            storageBucket: "SEU_STORAGE_BUCKET",
+            messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+            appId: "SEU_APP_ID"
+        };
+
+        const admin = require("firebase-admin");
+
+        const serviceAccount = require("srmanuel-57a98-firebase-adminsdk-fbsvc-f8deb5f1f7.json");
+
+        const app = admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        databaseURL: "https://srmanuel-57a98-default-rtdb.firebaseio.com"
+});
+        const db = getDatabase(app);
+
+        // Função para salvar produto no Firebase
+        function salvarProdutoNoFirebase(codigo, nome, marca, categoria) {
+            let produto = { codigo, nome, marca, categoria };
+            set(ref(db, 'produtos/' + codigo), produto)
+                .then(() => alert("Produto salvo com sucesso!"))
+                .catch(error => alert("Erro ao salvar: " + error));
+        }
+    </script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -38,131 +70,117 @@
 </head>
 <body>
 
-<h1>Leitor de Código de Barras e QR Code</h1>
+    <h1>Leitor de Código de Barras e QR Code</h1>
 
-<button onclick="iniciarScanner()">📷 Escanear Código de Barras</button>
-<div id="scanner-container"></div>
+    <button onclick="iniciarScanner()">📷 Escanear Código de Barras</button>
+    <div id="scanner-container"></div>
 
-<h2>Ou escanear QR Code</h2>
-<button onclick="iniciarQrScanner()">📷 Iniciar QR Code</button>
-<div id="qr-reader" style="display: none;"></div>
+    <h2>Ou escanear QR Code</h2>
+    <button onclick="iniciarQrScanner()">📷 Iniciar QR Code</button>
+    <div id="qr-reader" style="display: none;"></div>
 
-<h2>Ou digite manualmente</h2>
-<input type="text" id="codigoBarras" placeholder="Digite o código">
-<button onclick="buscarProduto()">Buscar</button>
+    <h2>Ou digite manualmente</h2>
+    <input type="text" id="codigoBarras" placeholder="Digite o código">
+    <button onclick="buscarProduto()">Buscar</button>
 
-<div id="resultado"></div>
+    <div id="resultado"></div>
 
-<script type="module">
-    function iniciarScanner() {
-        Quagga.init({
-            inputStream: {
-                name: "Live",
-                type: "LiveStream",
-                target: document.querySelector("#scanner-container"),
-                constraints: {
-                    facingMode: "environment"
-                }
-            },
-            decoder: {
-                readers: ["ean_reader", "upc_reader", "code_128_reader"]
-            }
-        }, function (err) {
-            if (!err) {
-                Quagga.start();
-            }
-        });
-
-        Quagga.onDetected(function (data) {
-            Quagga.stop();
-            let codigo = data.codeResult.code;
-            document.getElementById("codigoBarras").value = codigo;
-            buscarProduto();
-        });
-    }
-
-    let qrScanner;
-
-    function iniciarQrScanner() {
-        document.getElementById("qr-reader").style.display = "block";
-
-        if (!qrScanner) {
-            qrScanner = new Html5Qrcode("qr-reader");
-            qrScanner.start(
-                { facingMode: "environment" },
-                {
-                    fps: 10,
-                    qrbox: { width: 250, height: 250 }
+    <script>
+        function iniciarScanner() {
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector("#scanner-container"),
+                    constraints: {
+                        facingMode: "environment"
+                    }
                 },
-                (decodedText) => {
-                    document.getElementById("codigoBarras").value = decodedText;
-                    buscarProduto();
-                },
-                (errorMessage) => {
-                    console.log("QR Code não detectado ainda...");
+                decoder: {
+                    readers: ["ean_reader", "upc_reader", "code_128_reader"]
                 }
-            ).catch(err => {
-                console.error("Erro ao iniciar scanner de QR Code:", err);
+            }, function (err) {
+                if (!err) {
+                    Quagga.start();
+                }
+            });
+
+            Quagga.onDetected(function (data) {
+                Quagga.stop();
+                let codigo = data.codeResult.code;
+                document.getElementById("codigoBarras").value = codigo;
+                buscarProduto();
             });
         }
-    }
 
-    async function buscarProduto() {
-        let codigo = document.getElementById("codigoBarras").value;
-        let resultadoDiv = document.getElementById("resultado");
+        let qrScanner;
 
-        if (codigo === "") {
-            resultadoDiv.innerHTML = "<p>Por favor, insira ou escaneie um código.</p>";
-            return;
-        }
+        function iniciarQrScanner() {
+            document.getElementById("qr-reader").style.display = "block";
 
-        let url = `https://world.openfoodfacts.org/api/v0/product/${codigo}.json`;
-
-        try {
-            let response = await fetch(url);
-            let data = await response.json();
-
-            if (data.status === 1) {
-                let produto = data.product;
-                resultadoDiv.innerHTML = `
-                    <h2>${produto.product_name || "Nome não disponível"}</h2>
-                    <p><strong>Marca:</strong> ${produto.brands || "Não informado"}</p>
-                    <p><strong>Categoria:</strong> ${produto.categories || "Não disponível"}</p>
-                    <img src="${produto.image_url || ''}" alt="Imagem do produto">
-                `;
-            } else {
-                resultadoDiv.innerHTML = "<p>Produto não encontrado.</p>";
+            if (!qrScanner) {
+                qrScanner = new Html5Qrcode("qr-reader");
+                qrScanner.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 }
+                    },
+                    (decodedText) => {
+                        document.getElementById("codigoBarras").value = decodedText;
+                        buscarProduto();
+                    },
+                    (errorMessage) => {
+                        console.log("QR Code não detectado ainda...");
+                    }
+                ).catch(err => {
+                    console.error("Erro ao iniciar scanner de QR Code:", err);
+                });
             }
-        } catch (error) {
-            resultadoDiv.innerHTML = "<p>Erro ao buscar produto.</p>";
         }
-    }
 
+        async function buscarProduto() {
+            let codigo = document.getElementById("codigoBarras").value;
+            let resultadoDiv = document.getElementById("resultado");
 
+            if (codigo === "") {
+                resultadoDiv.innerHTML = "<p>Por favor, insira ou escaneie um código.</p>";
+                return;
+            }
 
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+            let url = `https://world.openfoodfacts.org/api/v0/product/${codigo}.json`;
 
-    const app = initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://srmanuel-57a98-default-rtdb.firebaseio.com"
-});
-    const db = getDatabase(app);
+            try {
+                let response = await fetch(url);
+                let data = await response.json();
 
-    function salvarProdutoNaoEncontrado(codigo) {
-        let produto = {
-            codigo: codigo,
-            nome: prompt("Nome do produto:"),
-            marca: prompt("Marca do produto:"),
-            categoria: prompt("Categoria do produto:")
-        };
+                if (data.status === 1) {
+                    let produto = data.product;
+                    resultadoDiv.innerHTML = `
+                        <h2>${produto.product_name || "Nome não disponível"}</h2>
+                        <p><strong>Marca:</strong> ${produto.brands || "Não informado"}</p>
+                        <p><strong>Categoria:</strong> ${produto.categories || "Não disponível"}</p>
+                        <img src="${produto.image_url || ''}" alt="Imagem do produto">
+                    `;
+                } else {
+                    if (confirm("Produto não encontrado! Deseja cadastrá-lo?")) {
+                        let nome = prompt("Nome do produto:");
+                        let marca = prompt("Marca do produto:");
+                        let categoria = prompt("Categoria do produto:");
 
-        set(ref(db, 'produtos/' + codigo), produto)
-            .then(() => alert("Produto salvo com sucesso!"))
-            .catch(error => alert("Erro ao salvar: " + error));
-    }
-</script>
-
+                        if (nome && marca && categoria) {
+                            salvarProdutoNoFirebase(codigo, nome, marca, categoria);
+                        } else {
+                            alert("Dados incompletos. Produto não cadastrado.");
+                        }
+                    }
+                    resultadoDiv.innerHTML = "<p>Produto não encontrado.</p>";
+                }
+            } catch (error) {
+                resultadoDiv.innerHTML = "<p>Erro ao buscar produto.</p>";
+            }
+        }
+    </script>
 
 </body>
 </html>
