@@ -3,21 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Busca de Produto por Código de Barras</title>
+    <title>Leitor de Código de Barras</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             text-align: center;
             padding: 20px;
         }
-        input {
-            padding: 10px;
-            width: 250px;
-            font-size: 16px;
+        #scanner-container {
+            width: 100%;
+            max-width: 400px;
+            margin: auto;
+            position: relative;
+        }
+        video {
+            width: 100%;
         }
         button {
-            padding: 10px 15px;
+            padding: 10px;
             font-size: 16px;
+            margin-top: 10px;
             cursor: pointer;
         }
         #resultado {
@@ -31,20 +37,51 @@
 </head>
 <body>
 
-    <h1>Buscar Produto pelo Código de Barras</h1>
+    <h1>Leitor de Código de Barras</h1>
 
-    <input type="text" id="codigoBarras" placeholder="Digite o código de barras">
+    <button onclick="iniciarScanner()">📷 Iniciar Leitor</button>
+    <div id="scanner-container"></div>
+
+    <h2>Ou digite manualmente</h2>
+    <input type="text" id="codigoBarras" placeholder="Digite o código">
     <button onclick="buscarProduto()">Buscar</button>
 
     <div id="resultado"></div>
 
     <script>
+        function iniciarScanner() {
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector("#scanner-container"),
+                    constraints: {
+                        facingMode: "environment"
+                    }
+                },
+                decoder: {
+                    readers: ["ean_reader"]
+                }
+            }, function (err) {
+                if (!err) {
+                    Quagga.start();
+                }
+            });
+
+            Quagga.onDetected(function (data) {
+                Quagga.stop();
+                let codigo = data.codeResult.code;
+                document.getElementById("codigoBarras").value = codigo;
+                buscarProduto();
+            });
+        }
+
         async function buscarProduto() {
             let codigo = document.getElementById("codigoBarras").value;
             let resultadoDiv = document.getElementById("resultado");
 
             if (codigo === "") {
-                resultadoDiv.innerHTML = "<p>Por favor, insira um código de barras.</p>";
+                resultadoDiv.innerHTML = "<p>Por favor, insira ou escaneie um código de barras.</p>";
                 return;
             }
 
