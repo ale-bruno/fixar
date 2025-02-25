@@ -53,7 +53,7 @@
 
 <div id="resultado"></div>
 
-<script>
+<script type="module">
     function iniciarScanner() {
         Quagga.init({
             inputStream: {
@@ -137,9 +137,9 @@
             resultadoDiv.innerHTML = "<p>Erro ao buscar produto.</p>";
         }
     }
-</script>
 
-<script type="module">
+
+
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
