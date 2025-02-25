@@ -7,17 +7,58 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.18.6/umd/index.min.js"></script>
     <script>
-        // Função para iniciar o scanner de código de barras
-        function iniciarScanner() {
-            console.log("Iniciando scanner de código de barras...");
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-            // Inicializa o Quagga para leitura do código de barras
+        const firebaseConfig = {
+            apiKey: "AIzaSyDvABUDoeTt4LYKg6TO8MixUqqH6UM-kVY",
+            authDomain: "srmanuel-c405c.firebaseapp.com",
+            databaseURL: "https://srmanuel-c405c-default-rtdb.firebaseio.com",
+            projectId: "srmanuel-c405c",
+            storageBucket: "srmanuel-c405c.firebasestorage.app",
+            messagingSenderId: "928073003564",
+            appId: "1:928073003564:web:77940fe83890020ba55789",
+            measurementId: "G-KSJYNXDCQ9"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        window.salvarProdutoNoFirebase = function(codigo, nome, marca, categoria, imagem) {
+            console.log("Salvando produto no Firebase...");
+            let produto = { codigo, nome, marca, categoria, imagem };
+            set(ref(db, 'produtos/' + codigo), produto)
+                .then(() => {
+                    console.log("Produto salvo com sucesso no Firebase!");
+                    alert("Produto salvo com sucesso!");
+                })
+                .catch((error) => {
+                    console.error("Erro ao salvar produto no Firebase: ", error);
+                    alert("Erro ao salvar produto no Firebase: " + error.message);
+                });
+        }
+
+        async function buscarProdutoNoFirebase(codigo) {
+            const produtoRef = ref(db, 'produtos/' + codigo);
+            const snapshot = await get(produtoRef);
+            if (snapshot.exists()) {
+                return snapshot.val();
+            } else {
+                return null;
+            }
+        }
+
+        let qrCodeScanner;
+        let cameraStream;
+
+        function iniciarScanner() {
+            // Iniciar QuaggaJS para ler código de barras
             Quagga.init({
                 inputStream: {
                     type: 'LiveStream',
                     target: document.querySelector('#scanner-container'),
                     constraints: {
-                        facingMode: 'environment'  // Usar a câmera traseira
+                        facingMode: 'environment'  // Garantir que a câmera traseira seja usada
                     }
                 },
                 decoder: {
@@ -25,89 +66,151 @@
                 }
             }, function(err) {
                 if (err) {
-                    console.error("Erro ao iniciar Quagga:", err);
+                    console.error(err);
                     return;
                 }
-                Quagga.start(); // Iniciar leitura
+                Quagga.start();
                 Quagga.onDetected(function(data) {
                     let codigo = data.codeResult.code;
                     alert("Código de barras detectado: " + codigo);
-                    // Aqui você pode chamar a função para buscar o produto no Firebase ou outra lógica
+                    buscarProduto(codigo);
                 });
             });
         }
 
-        // Função para iniciar o leitor de QR Code
         function iniciarQrScanner() {
-            console.log("Iniciando scanner de QR Code...");
-
-            let qrCodeScanner = new ZXing.BrowserQRCodeReader();
-
+            qrCodeScanner = new ZXing.BrowserQRCodeReader();
             qrCodeScanner.decodeOnceFromVideoDevice(undefined, 'qr-reader').then(result => {
                 alert("QR Code detectado: " + result.text);
-                // Aqui você pode chamar a função para buscar o produto no Firebase ou outra lógica
+                buscarProduto(result.text);
             }).catch(err => {
-                console.error("Erro ao ler QR Code:", err);
+                console.error(err);
             });
         }
 
-        // Função para acessar a câmera e capturar uma foto do produto
-        function iniciarCamera() {
-            console.log("Abrindo câmera para capturar imagem...");
-            document.getElementById("camera-container").style.display = "block";
+        function pararScanner() {
+            if (qrCodeScanner) {
+                qrCodeScanner.reset();
+            }
+            Quagga.stop();
+        }
 
+        function iniciarCamera() {
+            document.getElementById("camera-container").style.display = "block";
             navigator.mediaDevices.getUserMedia({
-                video: { facingMode: "environment" }  // Usar a câmera traseira
-            }).then(function(stream) {
+                video: {
+                    facingMode: { exact: "environment" }  // Garantir que a câmera traseira seja usada
+                }
+            })
+            .then(function(stream) {
+                cameraStream = stream;
                 document.getElementById("videoElement").srcObject = stream;
-            }).catch(function(error) {
+            })
+            .catch(function(error) {
                 alert("Erro ao acessar a câmera: " + error.message);
             });
         }
 
-        // Função para tirar uma foto
         function tirarFoto() {
             const video = document.getElementById("videoElement");
             const canvas = document.getElementById("photoCanvas");
             const context = canvas.getContext("2d");
 
-            // Definir o tamanho do canvas para o tamanho do vídeo
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
 
-            // Desenhar a imagem do vídeo no canvas
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Converter a imagem para Base64
             const imagemBase64 = canvas.toDataURL("image/png");
-
-            // Exibir a imagem capturada
             const imagemElement = document.createElement("img");
             imagemElement.src = imagemBase64;
             document.getElementById("resultado").innerHTML = "";
             document.getElementById("resultado").appendChild(imagemElement);
+
+            cameraStream.getTracks().forEach(track => track.stop());
+            window.imagemProduto = imagemBase64;
+        }
+
+        async function buscarProduto(codigo) {
+            let resultadoDiv = document.getElementById("resultado");
+
+            if (codigo === "") {
+                resultadoDiv.innerHTML = "<p>Por favor, insira ou escaneie um código.</p>";
+                return;
+            }
+
+            console.log("Buscando produto com código:", codigo);
+            let url = `https://world.openfoodfacts.org/api/v0/product/${codigo}.json`;
+
+            try {
+                let response = await fetch(url);
+                let data = await response.json();
+
+                if (data.status === 1) {
+                    let produto = data.product;
+                    resultadoDiv.innerHTML = `
+                        <h2>${produto.product_name || "Nome não disponível"}</h2>
+                        <p><strong>Marca:</strong> ${produto.brands || "Não informado"}</p>
+                        <p><strong>Categoria:</strong> ${produto.categories || "Não disponível"}</p>
+                        <img src="${produto.image_url || ''}" alt="Imagem do produto">
+                    `;
+                } else {
+                    let produtoFirebase = await buscarProdutoNoFirebase(codigo);
+                    if (produtoFirebase) {
+                        resultadoDiv.innerHTML = `
+                            <h2>${produtoFirebase.nome || "Nome não disponível"}</h2>
+                            <p><strong>Marca:</strong> ${produtoFirebase.marca || "Não informado"}</p>
+                            <p><strong>Categoria:</strong> ${produtoFirebase.categoria || "Não disponível"}</p>
+                            <p><strong>Código:</strong> ${produtoFirebase.codigo}</p>
+                            <img src="${produtoFirebase.imagem || ''}" alt="Imagem do produto" style="max-width: 200px;">
+                        `;
+                    } else {
+                        if (confirm("Produto não encontrado! Deseja cadastrá-lo?")) {
+                            let nome = prompt("Nome do produto:");
+                            let marca = prompt("Marca do produto:");
+                            let categoria = prompt("Categoria do produto:");
+                            let imagem = window.imagemProduto || prompt("URL da imagem do produto:");
+
+                            if (nome && marca && categoria && imagem) {
+                                salvarProdutoNoFirebase(codigo, nome, marca, categoria, imagem);
+                            } else {
+                                alert("Dados incompletos. Produto não cadastrado.");
+                            }
+                        }
+                        resultadoDiv.innerHTML = "<p>Produto não encontrado.</p>";
+                    }
+                }
+            } catch (error) {
+                resultadoDiv.innerHTML = "<p>Erro ao buscar produto.</p>";
+                console.error("Erro na requisição de produto:", error);
+            }
         }
     </script>
 </head>
 <body>
     <h1>Leitor de Código de Barras e QR Code</h1>
 
-    <!-- Botões -->
-    <button onclick="iniciarScanner()">Iniciar Scanner de Código de Barras</button>
-    <div id="scanner-container" style="width: 100%; height: 300px; border: 1px solid black;"></div>
+    <button onclick="iniciarScanner()">📷 Escanear Código de Barras</button>
+    <div id="scanner-container"></div>
 
-    <button onclick="iniciarQrScanner()">Iniciar Scanner de QR Code</button>
-    <div id="qr-reader" style="width: 100%; height: 300px;"></div>
+    <h2>Ou escanear QR Code</h2>
+    <button onclick="iniciarQrScanner()">📷 Iniciar QR Code</button>
+    <div id="qr-reader"></div>
 
-    <h2>Capturar Imagem do Produto</h2>
-    <button onclick="iniciarCamera()">Abrir Câmera</button>
+    <h2>Ou digite manualmente</h2>
+    <input type="text" id="codigoBarras" placeholder="Digite o código">
+    <button onclick="buscarProduto(document.getElementById('codigoBarras').value)">Buscar</button>
+
+    <div id="resultado"></div>
+
+    <h2>Captura de Imagem do Produto</h2>
+    <button onclick="iniciarCamera()">📸 Tirar Foto do Produto</button>
 
     <div id="camera-container" style="display: none;">
-        <video id="videoElement" autoplay style="width: 100%;"></video>
+        <video id="videoElement" autoplay></video>
         <button onclick="tirarFoto()">Tirar Foto</button>
         <canvas id="photoCanvas" style="display: none;"></canvas>
     </div>
 
-    <div id="resultado"></div>
 </body>
 </html>
