@@ -17,6 +17,7 @@
             storageBucket: "srmanuel-c405c.firebasestorage.app",
             messagingSenderId: "928073003564",
             appId: "1:928073003564:web:77940fe83890020ba55789",
+            measurementId: "G-KSJYNXDCQ9"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -24,12 +25,15 @@
 
         // Função para salvar produto no Firebase
         function salvarProdutoNoFirebase(codigo, nome, marca, categoria) {
+            console.log("Salvando produto no Firebase...");
             let produto = { codigo, nome, marca, categoria };
             set(ref(db, 'produtos/' + codigo), produto)
                 .then(() => {
+                    console.log("Produto salvo com sucesso no Firebase!");
                     alert("Produto salvo com sucesso!");
                 })
                 .catch((error) => {
+                    console.error("Erro ao salvar produto no Firebase: ", error);
                     alert("Erro ao salvar produto no Firebase: " + error.message);
                 });
         }
@@ -98,12 +102,16 @@
             }, function (err) {
                 if (!err) {
                     Quagga.start();
+                    console.log("Scanner iniciado!");
+                } else {
+                    console.error("Erro ao iniciar scanner:", err);
                 }
             });
 
             Quagga.onDetected(function (data) {
                 Quagga.stop();
                 let codigo = data.codeResult.code;
+                console.log("Código de barras detectado: ", codigo);
                 document.getElementById("codigoBarras").value = codigo;
                 buscarProduto();
             });
@@ -113,6 +121,7 @@
 
         function iniciarQrScanner() {
             document.getElementById("qr-reader").style.display = "block";
+            console.log("Iniciando scanner QR...");
 
             if (!qrScanner) {
                 qrScanner = new Html5Qrcode("qr-reader");
@@ -123,11 +132,12 @@
                         qrbox: { width: 250, height: 250 }
                     },
                     (decodedText) => {
+                        console.log("QR Code detectado:", decodedText);
                         document.getElementById("codigoBarras").value = decodedText;
                         buscarProduto();
                     },
                     (errorMessage) => {
-                        console.log("QR Code não detectado ainda...");
+                        console.log("Erro no QR Code: ", errorMessage);
                     }
                 ).catch(err => {
                     console.error("Erro ao iniciar scanner de QR Code:", err);
@@ -144,6 +154,7 @@
                 return;
             }
 
+            console.log("Buscando produto com código:", codigo);
             let url = `https://world.openfoodfacts.org/api/v0/product/${codigo}.json`;
 
             try {
@@ -174,6 +185,7 @@
                 }
             } catch (error) {
                 resultadoDiv.innerHTML = "<p>Erro ao buscar produto.</p>";
+                console.error("Erro na requisição de produto:", error);
             }
         }
     </script>
