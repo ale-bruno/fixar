@@ -5,19 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leitor de Código de Barras e QR Code</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        const admin = require("firebase-admin");
+        const firebaseConfig = {
+            apiKey: "SUA_API_KEY",
+            authDomain: "srmanuel-57a98-firebase-adminsdk-fbsvc-f8deb5f1f7",
+            databaseURL: "firebase-adminsdk-fbsvc@srmanuel-57a98.iam.gserviceaccount.com",
+            projectId: "srmanuel-57a98",
+            storageBucket: "SEU_STORAGE_BUCKET",
+            messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+            appId: "SEU_APP_ID"
+        };
 
-        const serviceAccount = require("srmanuel-57a98-firebase-adminsdk-fbsvc-f8deb5f1f7.json");
-
-        const app = admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        databaseURL: "https://srmanuel-57a98-default-rtdb.firebaseio.com"
-});
+        const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
         // Função para salvar produto no Firebase
